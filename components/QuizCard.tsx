@@ -1,76 +1,129 @@
 "use client";
 import { useState } from "react";
 import { QuizQuestion } from "@/data/questions";
+import { correctEmoji, wrongEmoji } from "@/lib/gamification";
 
 type Props = {
   q: QuizQuestion;
   index: number;
   total: number;
+  currentStreak?: number;
   onAnswer: (selectedIndex: number, isCorrect: boolean) => void;
   onNext: () => void;
   showRevealButton?: boolean;
 };
 
-export default function QuizCard({ q, index, total, onAnswer, onNext, showRevealButton = true }: Props) {
+export default function QuizCard({ q, index, total, currentStreak = 0, onAnswer, onNext, showRevealButton = true }: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
+  const [feedbackEmoji, setFeedbackEmoji] = useState<string | null>(null);
+  const [flash, setFlash] = useState<"correct" | "wrong" | null>(null);
 
   const submit = (i: number) => {
     if (selected !== null) return;
     setSelected(i);
-    onAnswer(i, i === q.correctIndex);
+    const correct = i === q.correctIndex;
+    if (correct) {
+      setFeedbackEmoji(correctEmoji(currentStreak + 1));
+      setFlash("correct");
+    } else {
+      setFeedbackEmoji(wrongEmoji());
+      setFlash("wrong");
+    }
+    onAnswer(i, correct);
+    setTimeout(() => setFlash(null), 800);
   };
 
   const reveal = () => setRevealed(true);
 
   return (
-    <div className="card">
-      <div className="flex items-center justify-between mb-3 text-xs text-slate-500">
-        <span className="badge bg-slate-100 text-slate-600">{q.topic}</span>
-        <span>{index + 1} / {total}</span>
+    <div className={`card slide-in relative ${flash === "correct" ? "flash-correct" : flash === "wrong" ? "flash-wrong shake" : ""}`}>
+      <div className="flex items-center justify-between mb-4 text-xs">
+        <span className="badge bg-gradient-to-l from-teal-100 to-cyan-100 text-teal-800 border border-teal-200">
+          {q.topic}
+        </span>
+        <div className="flex items-center gap-2">
+          {currentStreak >= 3 && (
+            <span className="badge bg-orange-100 text-orange-700 animate-pulse">
+              🔥 {currentStreak}
+            </span>
+          )}
+          <span className="text-slate-500 font-bold">
+            {index + 1} / {total}
+          </span>
+        </div>
       </div>
-      <h2 className="text-lg md:text-xl font-bold mb-5 leading-relaxed">{q.question}</h2>
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mb-5">
+        <div
+          className="h-full bg-gradient-to-l from-teal-400 to-cyan-500 transition-all duration-500 ease-out"
+          style={{ width: `${((index + 1) / total) * 100}%` }}
+        />
+      </div>
+
+      <h2 className="text-lg md:text-xl font-extrabold mb-6 leading-relaxed text-slate-900">
+        {q.question}
+      </h2>
+
       <div className="grid gap-2.5">
         {q.options.map((opt, i) => {
           const isSelected = selected === i;
           const isCorrect = i === q.correctIndex;
           const showCorrect = (selected !== null || revealed) && isCorrect;
           const showWrong = selected !== null && isSelected && !isCorrect;
-          const base =
-            "text-right rounded-xl px-4 py-3 border-2 transition text-sm md:text-base font-medium leading-relaxed";
-          const cls = showCorrect
-            ? "bg-green-50 border-green-500 text-green-900"
-            : showWrong
-            ? "bg-red-50 border-red-500 text-red-900"
-            : "bg-white border-slate-200 hover:border-brand/40 hover:bg-brand/5";
+          const dim = selected !== null && !isSelected && !isCorrect;
+
+          let cls = "bg-white border-slate-200 hover:border-teal-400 hover:bg-teal-50/40 hover:scale-[1.01]";
+          if (showCorrect) cls = "bg-gradient-to-l from-emerald-50 to-green-50 border-emerald-500 text-emerald-900 shadow-md shadow-emerald-100";
+          else if (showWrong) cls = "bg-gradient-to-l from-red-50 to-rose-50 border-red-500 text-red-900";
+          else if (dim) cls = "bg-slate-50 border-slate-200 text-slate-500";
+
           return (
             <button
               key={i}
               onClick={() => submit(i)}
               disabled={selected !== null}
-              className={`${base} ${cls} disabled:cursor-not-allowed flex items-start gap-3`}
+              className={`text-right rounded-2xl px-4 py-3.5 border-2 transition-all text-sm md:text-base font-medium leading-relaxed disabled:cursor-not-allowed flex items-start gap-3 ${cls}`}
             >
-              <span className="inline-flex items-center justify-center min-w-7 h-7 rounded-full bg-slate-100 text-slate-600 font-bold text-sm shrink-0">
+              <span className={`inline-flex items-center justify-center min-w-8 h-8 rounded-xl font-extrabold text-sm shrink-0 transition ${
+                showCorrect ? "bg-emerald-500 text-white" :
+                showWrong ? "bg-red-500 text-white" :
+                "bg-slate-100 text-slate-600"
+              }`}>
                 {String.fromCharCode(1488 + i)}
               </span>
               <span className="flex-1">{opt}</span>
-              {showCorrect && <span className="text-green-700">✓</span>}
-              {showWrong && <span className="text-red-700">✗</span>}
+              {showCorrect && <span className="text-2xl">✓</span>}
+              {showWrong && <span className="text-2xl">✗</span>}
             </button>
           );
         })}
       </div>
 
+      {/* Inline emoji feedback */}
+      {feedbackEmoji && (
+        <div className="mt-4 text-center pop-in">
+          <div className="text-5xl mb-1">{feedbackEmoji}</div>
+        </div>
+      )}
+
       {(selected !== null || revealed) && q.explanation && (
-        <div className="mt-4 p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-sm">
-          <div className="font-bold mb-1">הסבר</div>
-          {q.explanation}
+        <div className="mt-4 p-4 rounded-2xl bg-gradient-to-l from-blue-50 to-indigo-50 border border-blue-200 text-blue-900 text-sm fade-up">
+          <div className="font-extrabold mb-1.5 flex items-center gap-2">
+            <span>💡</span>
+            <span>הסבר</span>
+          </div>
+          <div className="leading-relaxed">{q.explanation}</div>
         </div>
       )}
 
       <div className="mt-5 flex items-center justify-between gap-3">
         {selected === null && !revealed && showRevealButton ? (
-          <button onClick={reveal} className="btn-ghost text-sm">הצג תשובה נכונה</button>
+          <button onClick={reveal} className="btn-ghost text-sm flex items-center gap-1.5">
+            <span>👁️</span>
+            <span>הצג תשובה</span>
+          </button>
         ) : (
           <div />
         )}
@@ -79,7 +132,10 @@ export default function QuizCard({ q, index, total, onAnswer, onNext, showReveal
           className="btn-primary mr-auto"
           disabled={selected === null && !revealed}
         >
-          המשך ←
+          <span className="flex items-center gap-2">
+            <span>המשך</span>
+            <span>←</span>
+          </span>
         </button>
       </div>
     </div>
