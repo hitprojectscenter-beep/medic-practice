@@ -10,6 +10,8 @@ import AchievementToast from "@/components/AchievementToast";
 import Celebration from "@/components/Celebration";
 import { useGameStats } from "@/hooks/useGameStats";
 import { correctEmoji, milestoneEmoji, wrongEmoji } from "@/lib/gamification";
+import { recordAnswer, recordExam } from "@/lib/userProfile";
+import { track } from "@/lib/track";
 
 const EXAM_SIZE = 40;
 const ANAMNESIS_PER_EXAM = 4;
@@ -22,27 +24,96 @@ export default function ExamPage() {
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [feedbackEmoji, setFeedbackEmoji] = useState<{ emoji: string; correct?: boolean } | null>(null);
-  const [quizStats, setQuizStats] = useState<{ correct: number; total: number; wrong: { qid: string; question: string; topic: string }[] }>(
+  type WrongEntry = {
+    qid: string;
+    topic: string;
+    question: string;
+    options: string[];
+    userAnswerIndex: number;
+    correctIndex: number;
+    explanation?: string;
+  };
+  const [quizStats, setQuizStats] = useState<{ correct: number; total: number; wrong: WrongEntry[] }>(
     { correct: 0, total: 0, wrong: [] }
   );
   const [anamnesisResults, setAnamnesisResults] = useState<{ caseId: string; score: number }[]>([]);
   const { stats, lastChange, onAnswer, onExamComplete, clearChange } = useGameStats();
 
-  const session: Item[] = useMemo(() => {
-    if (!started) return [];
+  // Session is mutable to support skipping quiz items.
+  // IMPORTANT: de-duplicated by id+kind so the same question/case never appears twice.
+  const [session, setSession] = useState<Item[]>([]);
+  const [seenQuizIds, setSeenQuizIds] = useState<Set<string>>(new Set());
+  const [skippedCount, setSkippedCount] = useState(0);
+
+  useEffect(() => {
+    if (!started) {
+      setSession([]);
+      setSeenQuizIds(new Set());
+      setSkippedCount(0);
+      return;
+    }
     const quizPool = shuffle(questions).slice(0, EXAM_SIZE - ANAMNESIS_PER_EXAM);
     const casePool = shuffle([...cases]).slice(0, ANAMNESIS_PER_EXAM);
     const mixed: Item[] = [
       ...quizPool.map(q => ({ kind: "quiz" as const, id: q.id })),
       ...casePool.map(c => ({ kind: "anamnesis" as const, id: c.id }))
     ];
-    return shuffle(mixed);
+    // De-duplicate (defense in depth)
+    const seenKey = new Set<string>();
+    const unique = shuffle(mixed).filter(it => {
+      const key = `${it.kind}:${it.id}`;
+      if (seenKey.has(key)) return false;
+      seenKey.add(key);
+      return true;
+    });
+    setSession(unique);
+    setSeenQuizIds(new Set(quizPool.map(q => q.id)));
+    setSkippedCount(0);
   }, [started]);
 
   const completed = started && index >= session.length;
+  const [examStartTime, setExamStartTime] = useState<number>(0);
+
+  // Replacement quiz questions for skip (excluding everything already seen).
+  const quizReplacements = useMemo(() => {
+    if (!started) return [];
+    return questions.filter(q => !seenQuizIds.has(q.id));
+  }, [started, seenQuizIds]);
+
+  const handleSkipQuiz = () => {
+    const current = session[index];
+    if (!current || current.kind !== "quiz" || quizReplacements.length === 0) return;
+    const replacement = quizReplacements[Math.floor(Math.random() * quizReplacements.length)];
+    setSession(prev => {
+      const next = [...prev];
+      next[index] = { kind: "quiz", id: replacement.id };
+      return next;
+    });
+    setSeenQuizIds(prev => {
+      const next = new Set(prev);
+      next.add(replacement.id);
+      return next;
+    });
+    setSkippedCount(c => c + 1);
+  };
 
   useEffect(() => {
-    if (completed) onExamComplete();
+    if (completed) {
+      onExamComplete();
+      // Record exam in user profile
+      const totalScore = Math.round(
+        (quizStats.total ? (quizStats.correct / quizStats.total) * 100 : 0) * 0.6 +
+        (anamnesisResults.length ? anamnesisResults.reduce((s, r) => s + r.score, 0) / anamnesisResults.length : 0) * 0.4
+      );
+      recordExam({
+        type: "exam",
+        scorePercent: totalScore,
+        questionsTotal: quizStats.total + anamnesisResults.length,
+        questionsCorrect: quizStats.correct + anamnesisResults.filter(r => r.score >= 60).length,
+        durationMs: examStartTime ? Date.now() - examStartTime : undefined
+      });
+      track({ type: "exam_completed", score: totalScore });
+    }
   }, [completed, onExamComplete]);
 
   if (!started) {
@@ -87,7 +158,7 @@ export default function ExamPage() {
             <div className="text-xs text-slate-500 text-center">
               💡 סדר השאלות אקראי. תקבלו XP על כל תשובה + 50 XP בונוס בהשלמת המבחן.
             </div>
-            <button onClick={() => setStarted(true)} className="btn-primary w-full text-lg">
+            <button onClick={() => { setStarted(true); setExamStartTime(Date.now()); }} className="btn-primary w-full text-lg">
               🚀 התחל מבחן
             </button>
           </div>
@@ -144,14 +215,64 @@ export default function ExamPage() {
             </div>
 
             {quizStats.wrong.length > 0 && (
-              <details className="text-right mt-4 group">
-                <summary className="cursor-pointer btn-ghost text-sm font-bold">
+              <details className="text-right mt-4 group" open>
+                <summary className="cursor-pointer btn-ghost text-sm font-bold mb-3">
                   📖 הצג שאלות שטעיתי בהן ({quizStats.wrong.length})
                 </summary>
-                <div className="mt-3 space-y-1 max-h-60 overflow-auto text-sm">
-                  {quizStats.wrong.map(w => (
-                    <div key={w.qid} className="p-2 rounded-lg bg-red-50 border border-red-100">
-                      <span className="text-xs text-red-700 font-bold">[{w.topic}]</span> {w.question}
+                <div className="mt-3 space-y-4 max-h-[500px] overflow-auto pr-1">
+                  {quizStats.wrong.map((w, idx) => (
+                    <div key={w.qid} className="p-4 rounded-2xl bg-white border-2 border-red-200 shadow-sm text-sm">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="badge bg-red-100 text-red-700 text-xs shrink-0">
+                          {idx + 1}/{quizStats.wrong.length}
+                        </span>
+                        <span className="badge bg-slate-100 text-slate-600 text-xs shrink-0">
+                          {w.topic}
+                        </span>
+                      </div>
+                      <div className="font-extrabold text-slate-900 mb-3 leading-relaxed text-right">
+                        {w.question}
+                      </div>
+                      <div className="space-y-1.5 mb-3">
+                        {w.options.map((opt, i) => {
+                          const isUser = i === w.userAnswerIndex;
+                          const isCorrect = i === w.correctIndex;
+                          let cls = "border-slate-200 bg-slate-50 text-slate-600";
+                          let badge = null;
+                          if (isCorrect) {
+                            cls = "border-emerald-400 bg-emerald-50 text-emerald-900 font-bold";
+                            badge = <span className="text-xs text-emerald-700 font-extrabold shrink-0">✓ נכונה</span>;
+                          } else if (isUser) {
+                            cls = "border-red-400 bg-red-50 text-red-900";
+                            badge = <span className="text-xs text-red-700 font-extrabold shrink-0">✗ הבחירה שלך</span>;
+                          }
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-start gap-2 p-2 rounded-xl border ${cls} text-right`}
+                            >
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-extrabold shrink-0 ${
+                                isCorrect ? "bg-emerald-500 text-white" :
+                                isUser ? "bg-red-500 text-white" :
+                                "bg-slate-200 text-slate-600"
+                              }`}>
+                                {String.fromCharCode(1488 + i)}
+                              </span>
+                              <span className="flex-1 text-xs leading-relaxed">{opt}</span>
+                              {badge}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {w.explanation && (
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 text-right">
+                          <div className="font-extrabold mb-1 flex items-center gap-1">
+                            <span>💡</span>
+                            <span>למה התשובה הנכונה היא {String.fromCharCode(1488 + w.correctIndex)}?</span>
+                          </div>
+                          <div className="leading-relaxed">{w.explanation}</div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -207,18 +328,34 @@ export default function ExamPage() {
             const q = questions.find(qq => qq.id === item.id)!;
             return (
               <QuizCard
+                key={q.id}
                 q={q}
                 index={index}
                 total={session.length}
                 currentStreak={stats?.currentStreak || 0}
                 showRevealButton={false}
-                onAnswer={(_, correct) => {
+                skippedCount={skippedCount}
+                canSkip={quizReplacements.length > 0}
+                onSkip={handleSkipQuiz}
+                onAnswer={(selectedIdx, correct) => {
                   setQuizStats(s => ({
                     correct: s.correct + (correct ? 1 : 0),
                     total: s.total + 1,
-                    wrong: correct ? s.wrong : [...s.wrong, { qid: q.id, question: q.question, topic: q.topic }]
+                    wrong: correct ? s.wrong : [
+                      ...s.wrong,
+                      {
+                        qid: q.id,
+                        topic: q.topic,
+                        question: q.question,
+                        options: q.options,
+                        userAnswerIndex: selectedIdx,
+                        correctIndex: q.correctIndex,
+                        explanation: q.explanation
+                      }
+                    ]
                   }));
                   onAnswer({ kind: "quiz", topic: q.topic, correct });
+                  recordAnswer(q.id, correct);
                   setFeedbackEmoji({
                     emoji: correct ? correctEmoji((stats?.currentStreak || 0) + 1) : wrongEmoji(),
                     correct
@@ -233,14 +370,17 @@ export default function ExamPage() {
             const c = cases.find(cc => cc.id === item.id)!;
             return (
               <AnamnesisCard
+                key={c.id}
                 c={c}
                 index={index}
                 total={session.length}
-                onComplete={({ feedback }) => {
+                onComplete={({ feedback, safetyScore, diagnosisCorrect }) => {
                   if (feedback) {
-                    setAnamnesisResults(r => [...r, { caseId: c.id, score: feedback.score }]);
-                    onAnswer({ kind: "anamnesis", topic: c.topic, correct: feedback.score >= 60, scorePct: feedback.score });
-                    setFeedbackEmoji({ emoji: milestoneEmoji(feedback.score) });
+                    const dxBonus = diagnosisCorrect === true ? 100 : diagnosisCorrect === false ? 0 : 50;
+                    const combined = Math.round(feedback.score * 0.6 + safetyScore * 0.25 + dxBonus * 0.15);
+                    setAnamnesisResults(r => [...r, { caseId: c.id, score: combined }]);
+                    onAnswer({ kind: "anamnesis", topic: c.topic, correct: combined >= 60, scorePct: combined });
+                    setFeedbackEmoji({ emoji: milestoneEmoji(combined) });
                   }
                 }}
                 onNext={() => setIndex(i => i + 1)}

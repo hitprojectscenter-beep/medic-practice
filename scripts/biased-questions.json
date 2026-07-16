@@ -1,0 +1,704 @@
+[
+  {
+    "id": "q-seizure-1",
+    "options": [
+      "תזוזה רצונית",
+      "פריקה חשמלית בלתי-מבוקרת בקליפת המוח הגורמת לתסמינים מוטוריים/הכרתיים",
+      "כאב חזק",
+      "חום גבוה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 69,
+    "maxWrong": 12,
+    "ratio": "5.75"
+  },
+  {
+    "id": "q-hf-101",
+    "options": [
+      "אסטמה",
+      "יתר לחץ דם כרוני ואוטמים קודמים",
+      "סוכרת",
+      "אלרגיה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 31,
+    "maxWrong": 6,
+    "ratio": "5.17"
+  },
+  {
+    "id": "q-drown-2",
+    "options": [
+      "כן, תמיד",
+      "לא! זה גורם להקאה ואספירציה של תוכן קיבה לריאות",
+      "רק לילדים",
+      "רק לקשישים"
+    ],
+    "correctIndex": 1,
+    "correctLen": 47,
+    "maxWrong": 10,
+    "ratio": "4.70"
+  },
+  {
+    "id": "q-birth-5",
+    "options": [
+      "תקין",
+      "חבל הטבור יוצא לפני העובר וצוואר הרחם חוסם עליו",
+      "סיבוך קל",
+      "סיום הריון"
+    ],
+    "correctIndex": 1,
+    "correctLen": 47,
+    "maxWrong": 10,
+    "ratio": "4.70"
+  },
+  {
+    "id": "q-acs-4",
+    "options": [
+      "אספירין ניתן לפי פרוטוקול אם אין הוראת נגד",
+      "אינסולין",
+      "אנטיביוטיקה",
+      "אדרנלין"
+    ],
+    "correctIndex": 0,
+    "correctLen": 42,
+    "maxWrong": 11,
+    "ratio": "3.82"
+  },
+  {
+    "id": "q-abd-109",
+    "options": [
+      "הקאת דם או הקאה כקפה טחון + צואה שחורה",
+      "כאב גרון",
+      "שלשול אדום",
+      "אין תלונות"
+    ],
+    "correctIndex": 0,
+    "correctLen": 38,
+    "maxWrong": 10,
+    "ratio": "3.80"
+  },
+  {
+    "id": "q-abd-107",
+    "options": [
+      "כאב קל",
+      "כאב חד עוויתי בצד הגב מקרין למפשעה",
+      "כאב בגרון",
+      "כאב באוזן"
+    ],
+    "correctIndex": 1,
+    "correctLen": 34,
+    "maxWrong": 9,
+    "ratio": "3.78"
+  },
+  {
+    "id": "q-peds-5",
+    "options": [
+      "חום בהריון",
+      "פרכוסים בהריון על רקע יתר ל\\\"ד הריוני",
+      "סכרת הריון",
+      "אנפילקסיס"
+    ],
+    "correctIndex": 1,
+    "correctLen": 37,
+    "maxWrong": 10,
+    "ratio": "3.70"
+  },
+  {
+    "id": "q-psy-3",
+    "options": [
+      "לחץ דם גבוה",
+      "תגובה רגשית אינטנסיבית לאירוע טראומטי",
+      "מחלה כרונית",
+      "סוכרת"
+    ],
+    "correctIndex": 1,
+    "correctLen": 37,
+    "maxWrong": 11,
+    "ratio": "3.36"
+  },
+  {
+    "id": "q-birth-3",
+    "options": [
+      "עומדת",
+      "שכובה על הגב עם רגליים מקופלות",
+      "על הבטן",
+      "ראשה למטה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 30,
+    "maxWrong": 9,
+    "ratio": "3.33"
+  },
+  {
+    "id": "q-tourn-3",
+    "options": [
+      "הנפגע צועק מכאב",
+      "הדימום נעצר לחלוטין ולא מורגש דופק דיסטלית לחוסם",
+      "החוסם רך",
+      "אין סימן"
+    ],
+    "correctIndex": 1,
+    "correctLen": 48,
+    "maxWrong": 15,
+    "ratio": "3.20"
+  },
+  {
+    "id": "q-stroke-3",
+    "options": [
+      "אירוע מוחי בילדים",
+      "תסמינים מוחיים שחלפו תוך כ-24 שעות ללא נזק מוחי בהדמיה",
+      "אירוע לב",
+      "פרכוס"
+    ],
+    "correctIndex": 1,
+    "correctLen": 54,
+    "maxWrong": 17,
+    "ratio": "3.18"
+  },
+  {
+    "id": "q-anaph-101",
+    "options": [
+      "אלרגיה קלה",
+      "תגובה אלרגית סיסטמית חריפה ומסכנת חיים",
+      "התקף התעטשות",
+      "פריחה בלבד"
+    ],
+    "correctIndex": 1,
+    "correctLen": 38,
+    "maxWrong": 12,
+    "ratio": "3.17"
+  },
+  {
+    "id": "q-acs-1",
+    "options": [
+      "התייבשות",
+      "חסימה של עורק כלילי הגורמת לחוסר חמצן בשריר הלב",
+      "מחלת חום",
+      "פגיעה ישירה בלב"
+    ],
+    "correctIndex": 1,
+    "correctLen": 47,
+    "maxWrong": 15,
+    "ratio": "3.13"
+  },
+  {
+    "id": "q-seizure-4",
+    "options": [
+      "מתוך סקרנות כללית",
+      "היפוגליקמיה היא סיבה שכיחה לפרכוס ולפי הצורך נחוץ טיפול דחוף בסוכר",
+      "לבדוק רעב והרגלי אכילה",
+      "לא נדרשת פעולה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 66,
+    "maxWrong": 22,
+    "ratio": "3.00"
+  },
+  {
+    "id": "q-asthma-1",
+    "options": [
+      "מחלה זיהומית בריאות",
+      "מחלה דלקתית כרונית של דרכי האוויר עם כיווץ ברונכיוליים",
+      "סוג של דלקת ריאות",
+      "פגיעה במערכת הלב"
+    ],
+    "correctIndex": 1,
+    "correctLen": 54,
+    "maxWrong": 19,
+    "ratio": "2.84"
+  },
+  {
+    "id": "q-mci-1",
+    "options": [
+      "אירוע עם נפגע אחד",
+      "אירוע בו כמות הנפגעים גדולה מיכולת המטפלים בזירה",
+      "כל אירוע בכביש",
+      "אירוע בחו\\\"ל בלבד"
+    ],
+    "correctIndex": 1,
+    "correctLen": 48,
+    "maxWrong": 17,
+    "ratio": "2.82"
+  },
+  {
+    "id": "q-hf-104",
+    "options": [
+      "בגלל הקור",
+      "שכיבה אופקית מחזירה נוזלים מהגפיים למחזור הדם",
+      "אכילה ערב מאוחרת",
+      "טלוויזיה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 45,
+    "maxWrong": 16,
+    "ratio": "2.81"
+  },
+  {
+    "id": "q-triage-4",
+    "options": [
+      "כשאתה עייף לטפל בו",
+      "כשאינו נושם ולא ניתן לשחזר נתיב אוויר בפעולה פשוטה",
+      "כשהוא קשיש",
+      "כשהוא ילד"
+    ],
+    "correctIndex": 1,
+    "correctLen": 50,
+    "maxWrong": 18,
+    "ratio": "2.78"
+  },
+  {
+    "id": "q-eye-1",
+    "options": [
+      "לסגור את העין",
+      "שטיפה רציפה במים נקיים לפחות 20 דקות",
+      "להניח קרח",
+      "לחצות"
+    ],
+    "correctIndex": 1,
+    "correctLen": 36,
+    "maxWrong": 13,
+    "ratio": "2.77"
+  },
+  {
+    "id": "q-triage-5",
+    "options": [
+      "פחות מ-10 או יותר מ-30 לדקה",
+      "12-20 לדקה",
+      "אין השפעה",
+      "16-25 לדקה"
+    ],
+    "correctIndex": 0,
+    "correctLen": 27,
+    "maxWrong": 10,
+    "ratio": "2.70"
+  },
+  {
+    "id": "q-syncope-1",
+    "options": [
+      "שינה עמוקה",
+      "איבוד הכרה זמני וקצר עקב ירידה זמנית באספקת דם למוח",
+      "מצב של תרדמת ממושכת",
+      "שבץ מוחי"
+    ],
+    "correctIndex": 1,
+    "correctLen": 51,
+    "maxWrong": 19,
+    "ratio": "2.68"
+  },
+  {
+    "id": "q-peds-101",
+    "options": [
+      "פיגום בצורת משולש",
+      "Appearance + Work of Breathing + Circulation",
+      "גובה משקל גיל",
+      "3 פגישות"
+    ],
+    "correctIndex": 1,
+    "correctLen": 44,
+    "maxWrong": 17,
+    "ratio": "2.59"
+  },
+  {
+    "id": "q-hypo-101",
+    "options": [
+      "אין מושג כזה בפרוטוקול",
+      "היפוגליקמיה בלילה גורמת לעלייה ברגולציה ולסוכר גבוה בבוקר",
+      "חום בלבד",
+      "כאב ראש"
+    ],
+    "correctIndex": 1,
+    "correctLen": 57,
+    "maxWrong": 22,
+    "ratio": "2.59"
+  },
+  {
+    "id": "q-vitals-9",
+    "options": [
+      "לא ניתן",
+      "מישוש דופק רדיאלי = ~80 סיסטולי",
+      "רק לפי תחושה",
+      "באמצעות סוכר"
+    ],
+    "correctIndex": 1,
+    "correctLen": 31,
+    "maxWrong": 12,
+    "ratio": "2.58"
+  },
+  {
+    "id": "q-chf-2",
+    "options": [
+      "שכיבה שטוחה",
+      "ישיבה זקופה עם רגליים תלויות",
+      "טרנדלנבורג",
+      "תנוחת חש\\\"י"
+    ],
+    "correctIndex": 1,
+    "correctLen": 28,
+    "maxWrong": 11,
+    "ratio": "2.55"
+  },
+  {
+    "id": "q-scene-3",
+    "options": [
+      "לא רלוונטי במצב זה",
+      "אסור לחשוף פרטי מטופל לאף אחד מחוץ לצוות הטיפולי",
+      "רק לרופא",
+      "תלוי בנסיבות הפציעה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 48,
+    "maxWrong": 19,
+    "ratio": "2.53"
+  },
+  {
+    "id": "q-assess-106",
+    "options": [
+      "השארת המטופל לבוש מלא",
+      "חשיפה לבדיקה מלאה תוך שמירה על כבוד ומניעת היפותרמיה",
+      "בדיקה רק של החזה",
+      "שאלות"
+    ],
+    "correctIndex": 1,
+    "correctLen": 52,
+    "maxWrong": 21,
+    "ratio": "2.48"
+  },
+  {
+    "id": "q-stroke-2",
+    "options": [
+      "אין משמעות לזמן",
+      "טיפול ב-tPA או צנתור מוחי תלוי בחלון זמן קצר",
+      "החולה חייב לישון",
+      "כדי למנוע התייבשות"
+    ],
+    "correctIndex": 1,
+    "correctLen": 44,
+    "maxWrong": 18,
+    "ratio": "2.44"
+  },
+  {
+    "id": "q-trauma-202",
+    "options": [
+      "כאב חזה רגיל",
+      "אוויר חודר לחלל הצדר ולא יוצא",
+      "התקף התעטשות",
+      "שיעלים"
+    ],
+    "correctIndex": 1,
+    "correctLen": 29,
+    "maxWrong": 12,
+    "ratio": "2.42"
+  },
+  {
+    "id": "q-trauma-3",
+    "options": [
+      "להעיר בכל מחיר",
+      "אימוביליזציה / שמירת ציר הראש-צוואר-גוף ישר",
+      "סיבוב צוואר לבדיקה",
+      "להושיב מיידית"
+    ],
+    "correctIndex": 1,
+    "correctLen": 43,
+    "maxWrong": 18,
+    "ratio": "2.39"
+  },
+  {
+    "id": "q-cpr-5",
+    "options": [
+      "אסור להפעיל את המכשיר כלל",
+      "להפעיל מיידית בלי דגשים",
+      "להעביר למקום יבש ולייבש היטב את בית החזה לפני הצמדת המדבקות",
+      "להמתין שיתייבש לבד"
+    ],
+    "correctIndex": 2,
+    "correctLen": 59,
+    "maxWrong": 25,
+    "ratio": "2.36"
+  },
+  {
+    "id": "q-ana-1",
+    "options": [
+      "תגובה אלרגית קלה",
+      "תגובה אלרגית סיסטמית חמורה מסכנת חיים",
+      "התקף אסטמה רגיל",
+      "התקף לב"
+    ],
+    "correctIndex": 1,
+    "correctLen": 37,
+    "maxWrong": 16,
+    "ratio": "2.31"
+  },
+  {
+    "id": "q-march-2",
+    "options": [
+      "מבלבל",
+      "בקרב מתים יותר מדימום מסיבי מאשר מחסימת נתיב אוויר",
+      "אין הבדל קליני משמעותי",
+      "תלוי במקום"
+    ],
+    "correctIndex": 1,
+    "correctLen": 50,
+    "maxWrong": 22,
+    "ratio": "2.27"
+  },
+  {
+    "id": "q-trauma-201",
+    "options": [
+      "להוציא מיד",
+      "אסור להוציא! לקבע במקום עם תחבושות מסביב",
+      "ללחוץ עליו",
+      "להתעלם ולהמשיך הלאה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 40,
+    "maxWrong": 19,
+    "ratio": "2.11"
+  },
+  {
+    "id": "q-mci-4",
+    "options": [
+      "להעדיף את החמור ביותר",
+      "לסרוק מהקרוב לרחוק כדי להעריך ולסייע במהירות",
+      "להמתין שכולם יגיעו",
+      "לעבור לרחוקים תחילה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 44,
+    "maxWrong": 21,
+    "ratio": "2.10"
+  },
+  {
+    "id": "q-meds-3",
+    "options": [
+      "כן, מים בלבד",
+      "כן, ג'ל גלוקוז בלבד",
+      "לא - סיכון לאספירציה ולחסימת נתיב אוויר",
+      "תלוי במצבו"
+    ],
+    "correctIndex": 2,
+    "correctLen": 39,
+    "maxWrong": 19,
+    "ratio": "2.05"
+  },
+  {
+    "id": "q-resp-4",
+    "options": [
+      "במטופל בהכרה מלאה",
+      "במטופל ללא הכרה שאין לו רפלקס הקאה",
+      "כתחליף לאמבו",
+      "רק במצבי החייאה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 34,
+    "maxWrong": 17,
+    "ratio": "2.00"
+  },
+  {
+    "id": "q-asthma-4",
+    "options": [
+      "התקף קל",
+      "התקף חמור שאינו מגיב לטיפול תרופתי",
+      "אסטמה כרונית בריא",
+      "אסטמה אצל ילדים"
+    ],
+    "correctIndex": 1,
+    "correctLen": 34,
+    "maxWrong": 17,
+    "ratio": "2.00"
+  },
+  {
+    "id": "q-acs-202",
+    "options": [
+      "דקה אחת מאוטם",
+      "ככל שיעבור פחות זמן בין הופעת תסמינים לפתיחת העורק",
+      "60 דקות מבית",
+      "אין השפעה ישירה על הטיפול"
+    ],
+    "correctIndex": 1,
+    "correctLen": 50,
+    "maxWrong": 25,
+    "ratio": "2.00"
+  },
+  {
+    "id": "q-birth-2",
+    "options": [
+      "כשהאישה אומרת",
+      "כשמופיע ראש העובר בנרתיק או צירים פחות מ-2-3 דקות",
+      "כשמתחילים הצירים הראשונים",
+      "לעולם לא, גם בחירום"
+    ],
+    "correctIndex": 1,
+    "correctLen": 49,
+    "maxWrong": 25,
+    "ratio": "1.96"
+  },
+  {
+    "id": "q-trauma-4",
+    "options": [
+      "סגירה הרמטית מלאה",
+      "פד עם שלושה צידים סגורים וצד אחד פתוח",
+      "להעיר",
+      "להתעלם ולהמשיך הלאה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 37,
+    "maxWrong": 19,
+    "ratio": "1.95"
+  },
+  {
+    "id": "q-hyper-1",
+    "options": [
+      "מכת חום קלה יותר",
+      "מכת חום: חום מרכזי > 40°C + שינוי במצב הכרה",
+      "אין הבדל קליני משמעותי",
+      "תלוי בעיקר בגיל המטופל"
+    ],
+    "correctIndex": 1,
+    "correctLen": 43,
+    "maxWrong": 22,
+    "ratio": "1.95"
+  },
+  {
+    "id": "q-cpr-9",
+    "options": [
+      "המטופל אינו מבוגר",
+      "אין דפיברילטור זמין",
+      "סכנה לחיי המטפל / סימני מוות ברורים",
+      "המשפחה מתנגדת"
+    ],
+    "correctIndex": 2,
+    "correctLen": 35,
+    "maxWrong": 19,
+    "ratio": "1.84"
+  },
+  {
+    "id": "q-med-101",
+    "options": [
+      "Right Patient, Right Medication, Right Dose, Right Route, Right Time",
+      "Run, Read, Recall, Report, Reach",
+      "Real, Round, Rapid, Reliable, Ready",
+      "Rest, Refresh, Relax, Recover, Recheck"
+    ],
+    "correctIndex": 0,
+    "correctLen": 68,
+    "maxWrong": 38,
+    "ratio": "1.79"
+  },
+  {
+    "id": "q-stroke-5",
+    "options": [
+      "כן, לתת מים מיד",
+      "כן, רק אוכל מוצק",
+      "לא - יש להימנע, כי קיים סיכון לאספירציה",
+      "תלוי בעיקר בגיל המטופל"
+    ],
+    "correctIndex": 2,
+    "correctLen": 39,
+    "maxWrong": 22,
+    "ratio": "1.77"
+  },
+  {
+    "id": "q-tourn-5",
+    "options": [
+      "תמיד חוסם עורקים עדיף",
+      "בדימומים בינוניים שלא דורשים חסימה מלאה",
+      "תחבושת תמיד עדיפה",
+      "אין הבדל קליני משמעותי"
+    ],
+    "correctIndex": 1,
+    "correctLen": 39,
+    "maxWrong": 22,
+    "ratio": "1.77"
+  },
+  {
+    "id": "q-copd-6",
+    "options": [
+      "כאב לוחץ מקרין לזרוע",
+      "כאב פלאוריטי - מחמיר בנשימה עמוקה ובשיעול",
+      "כאב צורב מאחורי עצם החזה",
+      "אין כאב בפנאומוניה"
+    ],
+    "correctIndex": 1,
+    "correctLen": 41,
+    "maxWrong": 24,
+    "ratio": "1.71"
+  },
+  {
+    "id": "q-cpr-6",
+    "options": [
+      "כן, חייבים להמשיך עיסויים",
+      "כן, רק הצוות הראשי",
+      "לא - אסור לגעת או לבצע עיסויים בזמן האבחון",
+      "תלוי בסוג המכשיר"
+    ],
+    "correctIndex": 2,
+    "correctLen": 42,
+    "maxWrong": 25,
+    "ratio": "1.68"
+  },
+  {
+    "id": "q-role-5",
+    "options": [
+      "מהירות ויעילות בלבד",
+      "אסרטיביות בלבד",
+      "אתיקה, סודיות רפואית, יושר, רוגע, אמפטיה וכבוד לזולת",
+      "ידע תיאורטי ללא צורך בעבודת צוות"
+    ],
+    "correctIndex": 2,
+    "correctLen": 52,
+    "maxWrong": 32,
+    "ratio": "1.63"
+  },
+  {
+    "id": "q-assess-201",
+    "options": [
+      "Strong, Active, Mobile, Pulse, Loud, Energetic",
+      "Signs/Symptoms, Allergies, Medications, Past hx, Last meal, Events leading",
+      "Slow, Aware, Mobile, Plus, Less, Eat",
+      "אין פרוטוקול כזה ברפואת חירום"
+    ],
+    "correctIndex": 1,
+    "correctLen": 74,
+    "maxWrong": 46,
+    "ratio": "1.61"
+  },
+  {
+    "id": "q-role-1",
+    "options": [
+      "ביצוע פעולות פולשניות מתקדמות בשטח",
+      "מתן סיוע רפואי דחוף עד הגעה למרכז רפואי או צוות פינוי",
+      "אבחון סופי של מחלת המטופל",
+      "מתן תרופות מרשם לפי שיקול דעת"
+    ],
+    "correctIndex": 1,
+    "correctLen": 53,
+    "maxWrong": 34,
+    "ratio": "1.56"
+  },
+  {
+    "id": "q-march-1",
+    "options": [
+      "Mobility, Airway, Rescue, Care, Hospital",
+      "Massive bleeding, Airway, Respiration, Circulation, Hypothermia/Head",
+      "Medical, Action, Response, Critical, Handle",
+      "Movement, Assessment, Recovery, Comfort, Help"
+    ],
+    "correctIndex": 1,
+    "correctLen": 68,
+    "maxWrong": 45,
+    "ratio": "1.51"
+  },
+  {
+    "id": "q-assess-202",
+    "options": [
+      "Onset, Provocation, Quality, Region/Radiation, Severity, Time",
+      "Old, Past, Quiet, Restful, Slow, Tired",
+      "Open, Press, Question, Reach, Stop, Touch",
+      "אין פרוטוקול כזה ברפואת חירום"
+    ],
+    "correctIndex": 0,
+    "correctLen": 61,
+    "maxWrong": 41,
+    "ratio": "1.49"
+  }
+]

@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
+import { VisitTracker } from "./_track/VisitTracker";
 
 export const metadata: Metadata = {
   title: "תרגול חובשים | קורס רפואת חירום",
@@ -20,6 +22,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="he" dir="rtl">
       <body className="min-h-screen">
         {children}
+        <VisitTracker />
+        <Analytics />
       </body>
     </html>
   );

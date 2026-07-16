@@ -8,6 +8,7 @@ import AchievementToast from "@/components/AchievementToast";
 import Celebration from "@/components/Celebration";
 import { useGameStats } from "@/hooks/useGameStats";
 import { milestoneEmoji } from "@/lib/gamification";
+import { track } from "@/lib/track";
 
 const CASE_EMOJI: Record<string, string> = {
   "case-chest-pain": "💔",
@@ -165,14 +166,19 @@ export default function AnamnesisPracticePage() {
 
       <div className="max-w-3xl mx-auto px-4 py-6 md:py-8">
         <AnamnesisCard
+          key={c.id}
           c={c}
           index={index}
           total={session.length}
-          onComplete={({ feedback }) => {
+          onComplete={({ feedback, safetyScore, diagnosisCorrect }) => {
             if (feedback) {
-              setResults(r => [...r, { caseId: c.id, score: feedback.score }]);
-              onAnswer({ kind: "anamnesis", topic: c.topic, correct: feedback.score >= 60, scorePct: feedback.score });
-              setFeedbackEmoji(milestoneEmoji(feedback.score));
+              // Combined score: 60% anamnesis, 25% safety, 15% diagnosis-correctness
+              const dxBonus = diagnosisCorrect === true ? 100 : diagnosisCorrect === false ? 0 : 50;
+              const combined = Math.round(feedback.score * 0.6 + safetyScore * 0.25 + dxBonus * 0.15);
+              setResults(r => [...r, { caseId: c.id, score: combined }]);
+              onAnswer({ kind: "anamnesis", topic: c.topic, correct: combined >= 60, scorePct: combined });
+              track({ type: "anamnesis_completed", caseId: c.id, score: combined });
+              setFeedbackEmoji(milestoneEmoji(combined));
             }
           }}
           onNext={() => setIndex(i => i + 1)}

@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { questions, topics, shuffle } from "@/data/questions";
 import QuizCard from "@/components/QuizCard";
 import StatsBar from "@/components/StatsBar";
@@ -8,6 +9,8 @@ import Celebration from "@/components/Celebration";
 import AchievementToast from "@/components/AchievementToast";
 import { useGameStats } from "@/hooks/useGameStats";
 import { correctEmoji, wrongEmoji } from "@/lib/gamification";
+import { buildAdaptiveQuizPool, recordAnswer, recordExam } from "@/lib/userProfile";
+import { track } from "@/lib/track";
 
 const TOPIC_EMOJIS: Record<string, string> = {
   "תפקיד החובש": "🚑",
@@ -33,21 +36,111 @@ const TOPIC_EMOJIS: Record<string, string> = {
 };
 
 export default function QuizPracticePage() {
-  const [topic, setTopic] = useState<string>("all");
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">טוען...</div>}>
+      <QuizPracticeInner />
+    </Suspense>
+  );
+}
+
+function QuizPracticeInner() {
+  const params = useSearchParams();
+  const initialTopic = params?.get("topic") || "all";
+  const [topic, setTopic] = useState<string>(initialTopic);
   const [count, setCount] = useState<number>(10);
+  const [adaptive, setAdaptive] = useState<boolean>(true);
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
+  const [startTime, setStartTime] = useState<number>(0);
   const [feedbackEmoji, setFeedbackEmoji] = useState<{ emoji: string; correct: boolean } | null>(null);
-  const [localStats, setLocalStats] = useState<{ correct: number; total: number; wrong: { qid: string; topic: string; question: string }[] }>(
+  // Track wrong answers with FULL detail: question, options, user's pick, correct, explanation
+  type WrongEntry = {
+    qid: string;
+    topic: string;
+    question: string;
+    options: string[];
+    userAnswerIndex: number;
+    correctIndex: number;
+    explanation?: string;
+  };
+  const [localStats, setLocalStats] = useState<{ correct: number; total: number; wrong: WrongEntry[] }>(
     { correct: 0, total: 0, wrong: [] }
   );
+  // Session is now mutable state so we can swap questions when the user skips.
+  const [session, setSession] = useState<typeof questions>([]);
+  // IDs of every question that ever appeared OR was skipped — prevents duplicates.
+  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [skippedCount, setSkippedCount] = useState(0);
   const { stats, lastChange, onAnswer, clearChange } = useGameStats();
 
-  const session = useMemo(() => {
+  // Sync topic if URL changes (e.g., user clicks a different chip)
+  useEffect(() => {
+    const t = params?.get("topic");
+    if (t && topics.includes(t as any)) setTopic(t);
+  }, [params]);
+
+  // Build the initial session whenever a new run starts.
+  // Final safety: de-duplicate by id (Map keeps last value).
+  useEffect(() => {
+    if (!started) {
+      setSession([]);
+      setSeenIds(new Set());
+      setSkippedCount(0);
+      return;
+    }
+    const built = adaptive
+      ? buildAdaptiveQuizPool(count, topic === "all" ? undefined : topic)
+      : shuffle(topic === "all" ? questions : questions.filter(q => q.topic === topic)).slice(0, count);
+    const unique = Array.from(new Map(built.map(q => [q.id, q])).values());
+    setSession(unique);
+    setSeenIds(new Set(unique.map(q => q.id)));
+    setSkippedCount(0);
+  }, [started, topic, count, adaptive]);
+
+  // Pool of candidate questions for skips: everything in current topic NOT yet seen.
+  const candidateReplacements = useMemo(() => {
     if (!started) return [];
     const pool = topic === "all" ? questions : questions.filter(q => q.topic === topic);
-    return shuffle(pool).slice(0, count);
-  }, [started, topic, count]);
+    return pool.filter(q => !seenIds.has(q.id));
+  }, [started, topic, seenIds]);
+
+  const hasReplacementAvailable = candidateReplacements.length > 0;
+
+  // Replace the current question with a fresh one from the candidate pool.
+  // Guarantees no duplicates in the session.
+  const handleSkip = () => {
+    const current = session[index];
+    if (!current || candidateReplacements.length === 0) return;
+    const replacement = candidateReplacements[Math.floor(Math.random() * candidateReplacements.length)];
+    setSession(prev => {
+      const next = [...prev];
+      next[index] = replacement;
+      return next;
+    });
+    setSeenIds(prev => {
+      const next = new Set(prev);
+      next.add(replacement.id); // mark the new question as seen too
+      return next;
+    });
+    setSkippedCount(c => c + 1);
+    // Note: do NOT record this in localStats (skipped ≠ wrong)
+    // Note: do NOT record this in profile (recordAnswer not called)
+  };
+
+  // Record exam result when finished
+  useEffect(() => {
+    if (started && index === session.length && session.length > 0) {
+      recordExam({
+        type: "quiz",
+        topic: topic === "all" ? undefined : topic,
+        scorePercent: Math.round((localStats.correct / localStats.total) * 100),
+        questionsTotal: localStats.total,
+        questionsCorrect: localStats.correct,
+        durationMs: startTime ? Date.now() - startTime : undefined
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, index, session.length]);
 
   if (!started) {
     return (
@@ -69,31 +162,65 @@ export default function QuizPracticePage() {
             <p className="text-slate-600">בחרו נושא וכמות שאלות, וצברו XP על כל תשובה נכונה!</p>
           </div>
 
-          <div className="card space-y-5">
-            <label className="block">
-              <div className="text-sm font-extrabold mb-2 flex items-center gap-2">
+          <div className="card space-y-6">
+            {/* Topic — tap-friendly grid replaces the native <select> which was unreliable on mobile */}
+            <div>
+              <div className="text-sm font-extrabold mb-3 flex items-center gap-2">
                 <span>🎯</span>
                 <span>נושא</span>
+                <span className="text-xs text-slate-500 font-medium mr-auto">
+                  {topic === "all"
+                    ? `${questions.length} שאלות זמינות`
+                    : `${questions.filter(q => q.topic === topic).length} שאלות`}
+                </span>
               </div>
-              <select
-                value={topic}
-                onChange={e => setTopic(e.target.value)}
-                className="w-full rounded-2xl border-2 border-slate-200 px-4 py-3 text-base font-medium focus:border-brand focus:outline-none transition pl-10"
-              >
-                <option value="all">🌟 כל הנושאים ({questions.length} שאלות)</option>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTopic("all")}
+                  className={`col-span-2 min-h-[52px] px-3 py-3 rounded-2xl border-2 text-right font-bold text-sm transition flex items-center gap-2 ${
+                    topic === "all"
+                      ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent shadow-lg shadow-teal-200 scale-[1.01]"
+                      : "bg-white border-slate-200 active:scale-95 active:bg-teal-50"
+                  }`}
+                >
+                  <span className="text-2xl">🌟</span>
+                  <span className="flex-1 text-right">כל הנושאים</span>
+                  <span className={`text-xs ${topic === "all" ? "text-white/90" : "text-slate-500"}`}>
+                    {questions.length}
+                  </span>
+                </button>
                 {topics.map(t => {
                   const n = questions.filter(q => q.topic === t).length;
+                  const disabled = n === 0;
+                  const selected = topic === t;
                   return (
-                    <option key={t} value={t} disabled={n === 0}>
-                      {TOPIC_EMOJIS[t] || "📌"} {t} ({n})
-                    </option>
+                    <button
+                      key={t}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setTopic(t)}
+                      className={`min-h-[58px] px-3 py-2.5 rounded-2xl border-2 text-right text-xs md:text-sm font-bold transition flex items-center gap-2 ${
+                        disabled
+                          ? "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                          : selected
+                          ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent shadow-md scale-[1.02]"
+                          : "bg-white border-slate-200 active:scale-95 active:bg-teal-50"
+                      }`}
+                    >
+                      <span className="text-xl shrink-0">{TOPIC_EMOJIS[t] || "📌"}</span>
+                      <span className="flex-1 text-right leading-tight">{t}</span>
+                      <span className={`text-[10px] shrink-0 ${selected ? "text-white/90" : "text-slate-400"}`}>
+                        {n}
+                      </span>
+                    </button>
                   );
                 })}
-              </select>
-            </label>
+              </div>
+            </div>
 
-            <label className="block">
-              <div className="text-sm font-extrabold mb-2 flex items-center gap-2">
+            <div>
+              <div className="text-sm font-extrabold mb-3 flex items-center gap-2">
                 <span>🔢</span>
                 <span>כמה שאלות?</span>
               </div>
@@ -103,19 +230,38 @@ export default function QuizPracticePage() {
                     key={n}
                     type="button"
                     onClick={() => setCount(n)}
-                    className={`py-3 rounded-xl border-2 font-bold transition ${
+                    className={`min-h-[56px] text-lg rounded-2xl border-2 font-black transition ${
                       count === n
-                        ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent shadow-lg shadow-teal-200"
-                        : "bg-white border-slate-200 hover:border-teal-400"
+                        ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent shadow-lg shadow-teal-200 scale-105"
+                        : "bg-white border-slate-200 active:scale-95 active:bg-teal-50"
                     }`}
                   >
                     {n}
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* Adaptive toggle */}
+            <label className="flex items-center gap-3 p-3 rounded-2xl bg-gradient-to-l from-violet-50 to-purple-50 border border-violet-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={adaptive}
+                onChange={e => setAdaptive(e.target.checked)}
+                className="w-5 h-5 accent-violet-600"
+              />
+              <div className="flex-1">
+                <div className="text-sm font-extrabold text-violet-900 flex items-center gap-1.5">
+                  <span>🧠</span>
+                  <span>תרגול אדפטיבי - מותאם לרמתי</span>
+                </div>
+                <div className="text-xs text-violet-700">
+                  שאלות מנושאים שאתה צריך לחזק - לפי ההיסטוריה שלך
+                </div>
+              </div>
             </label>
 
-            <button onClick={() => setStarted(true)} className="btn-primary w-full text-lg">
+            <button onClick={() => { setStarted(true); setStartTime(Date.now()); }} className="btn-primary w-full text-lg min-h-[56px]">
               🚀 התחל תרגול
             </button>
           </div>
@@ -154,14 +300,64 @@ export default function QuizPracticePage() {
             </p>
 
             {localStats.wrong.length > 0 && (
-              <details className="text-right mb-6 group">
-                <summary className="cursor-pointer btn-ghost text-sm font-bold">
+              <details className="text-right mb-6 group" open>
+                <summary className="cursor-pointer btn-ghost text-sm font-bold mb-3">
                   📖 הצג שאלות שטעיתי בהן ({localStats.wrong.length})
                 </summary>
-                <div className="mt-3 space-y-1 max-h-60 overflow-auto text-sm">
-                  {localStats.wrong.map(w => (
-                    <div key={w.qid} className="p-2 rounded-lg bg-red-50 border border-red-100">
-                      <span className="text-xs text-red-700 font-bold">[{w.topic}]</span> {w.question}
+                <div className="mt-3 space-y-4 max-h-[500px] overflow-auto pr-1">
+                  {localStats.wrong.map((w, idx) => (
+                    <div key={w.qid} className="p-4 rounded-2xl bg-white border-2 border-red-200 shadow-sm text-sm">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="badge bg-red-100 text-red-700 text-xs shrink-0">
+                          {idx + 1}/{localStats.wrong.length}
+                        </span>
+                        <span className="badge bg-slate-100 text-slate-600 text-xs shrink-0">
+                          {w.topic}
+                        </span>
+                      </div>
+                      <div className="font-extrabold text-slate-900 mb-3 leading-relaxed text-right">
+                        {w.question}
+                      </div>
+                      <div className="space-y-1.5 mb-3">
+                        {w.options.map((opt, i) => {
+                          const isUser = i === w.userAnswerIndex;
+                          const isCorrect = i === w.correctIndex;
+                          let cls = "border-slate-200 bg-slate-50 text-slate-600";
+                          let badge = null;
+                          if (isCorrect) {
+                            cls = "border-emerald-400 bg-emerald-50 text-emerald-900 font-bold";
+                            badge = <span className="text-xs text-emerald-700 font-extrabold shrink-0">✓ נכונה</span>;
+                          } else if (isUser) {
+                            cls = "border-red-400 bg-red-50 text-red-900";
+                            badge = <span className="text-xs text-red-700 font-extrabold shrink-0">✗ הבחירה שלך</span>;
+                          }
+                          return (
+                            <div
+                              key={i}
+                              className={`flex items-start gap-2 p-2 rounded-xl border ${cls} text-right`}
+                            >
+                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-extrabold shrink-0 ${
+                                isCorrect ? "bg-emerald-500 text-white" :
+                                isUser ? "bg-red-500 text-white" :
+                                "bg-slate-200 text-slate-600"
+                              }`}>
+                                {String.fromCharCode(1488 + i)}
+                              </span>
+                              <span className="flex-1 text-xs leading-relaxed">{opt}</span>
+                              {badge}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {w.explanation && (
+                        <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 text-right">
+                          <div className="font-extrabold mb-1 flex items-center gap-1">
+                            <span>💡</span>
+                            <span>למה התשובה הנכונה היא {String.fromCharCode(1488 + w.correctIndex)}?</span>
+                          </div>
+                          <div className="leading-relaxed">{w.explanation}</div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -216,17 +412,34 @@ export default function QuizPracticePage() {
 
       <div className="max-w-3xl mx-auto px-4 py-6 md:py-8">
         <QuizCard
+          key={q.id}
           q={q}
           index={index}
           total={session.length}
           currentStreak={stats?.currentStreak || 0}
-          onAnswer={(_, correct) => {
+          skippedCount={skippedCount}
+          canSkip={hasReplacementAvailable}
+          onSkip={handleSkip}
+          onAnswer={(selectedIdx, correct) => {
             setLocalStats(s => ({
               correct: s.correct + (correct ? 1 : 0),
               total: s.total + 1,
-              wrong: correct ? s.wrong : [...s.wrong, { qid: q.id, topic: q.topic, question: q.question }]
+              wrong: correct ? s.wrong : [
+                ...s.wrong,
+                {
+                  qid: q.id,
+                  topic: q.topic,
+                  question: q.question,
+                  options: q.options,
+                  userAnswerIndex: selectedIdx,
+                  correctIndex: q.correctIndex,
+                  explanation: q.explanation
+                }
+              ]
             }));
             onAnswer({ kind: "quiz", topic: q.topic, correct });
+            track({ type: "question_answered", topic: q.topic, correct });
+            recordAnswer(q.id, correct);
             setFeedbackEmoji({
               emoji: correct ? correctEmoji((stats?.currentStreak || 0) + 1) : wrongEmoji(),
               correct

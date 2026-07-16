@@ -16,9 +16,21 @@ type Props = {
   /** קולבק עם טקסט חי תוך כדי דיבור (זיהוי דפדפן בלבד) */
   onPartial?: (text: string) => void;
   disabled?: boolean;
+  /** Optional partial buffer to use as fallback if no result comes back */
+  partialBufferRef?: { current: string };
 };
 
-export default function Mic({ preferWhisper, onFinish, onPartial, disabled }: Props) {
+/** Race a promise against a timeout; rejects if the timeout hits first */
+const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} - תפוגת זמן`)), ms);
+    promise.then(
+      val => { clearTimeout(timer); resolve(val); },
+      err => { clearTimeout(timer); reject(err); }
+    );
+  });
+
+export default function Mic({ preferWhisper, onFinish, onPartial, disabled, partialBufferRef }: Props) {
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usingWhisper, setUsingWhisper] = useState(false);
@@ -43,9 +55,12 @@ export default function Mic({ preferWhisper, onFinish, onPartial, disabled }: Pr
         await rec.start();
       } else {
         const stt = createBrowserSTT("he-IL");
-        if (!stt) throw new Error("דפדפן ללא תמיכה בזיהוי קולי - מנסה Whisper");
+        if (!stt) throw new Error("דפדפן ללא תמיכה בזיהוי קולי");
         sttRef.current = stt;
-        stt.onPartial = (t: string) => onPartial?.(t);
+        stt.onPartial = (t: string) => {
+          if (partialBufferRef) partialBufferRef.current = t;
+          onPartial?.(t);
+        };
         stt.start();
       }
       setRecording(true);
@@ -57,18 +72,49 @@ export default function Mic({ preferWhisper, onFinish, onPartial, disabled }: Pr
   const stop = async () => {
     setRecording(false);
     setProcessing(true);
+    let finishCalled = false;
+
+    // Hard safety fallback: never leave the user stuck. After 20 s force-finish.
+    const hardTimeoutId = setTimeout(() => {
+      if (finishCalled) return;
+      finishCalled = true;
+      setProcessing(false);
+      const partial = partialBufferRef?.current?.trim() || "";
+      setError("ההקלטה נתקעה - מסיים עם הטקסט שכבר זוהה");
+      onFinish(partial, usingWhisper ? "whisper" : "browser");
+    }, 20000);
+
     try {
-      let result;
+      let result: { text: string; source: "browser" | "whisper" } | undefined;
       if (usingWhisper && whisperRef.current) {
-        result = await whisperRef.current.stop();
+        // Whisper round-trip: 15 s ceiling.
+        result = await withTimeout(whisperRef.current.stop(), 15000, "תמלול Whisper");
         whisperRef.current = null;
       } else if (sttRef.current) {
-        result = await sttRef.current.stop();
+        // Browser STT stop is fast (the `onend` event), but iOS sometimes
+        // never fires it - 4 s ceiling.
+        result = await withTimeout(sttRef.current.stop(), 4000, "זיהוי דפדפן");
         sttRef.current = null;
       }
-      if (result) onFinish(result.text, result.source);
+      if (!finishCalled) {
+        finishCalled = true;
+        clearTimeout(hardTimeoutId);
+        const text = result?.text?.trim() || partialBufferRef?.current?.trim() || "";
+        onFinish(text, result?.source || (usingWhisper ? "whisper" : "browser"));
+      }
     } catch (e: any) {
-      setError(e?.message || "שגיאה בעצירת ההקלטה");
+      // Stop failed (timeout, network, mic permission) - still recover gracefully.
+      if (!finishCalled) {
+        finishCalled = true;
+        clearTimeout(hardTimeoutId);
+        const partial = partialBufferRef?.current?.trim() || "";
+        setError(partial
+          ? `שגיאה: ${e?.message || ""} - שולח את הטקסט שזוהה עד כה`
+          : (e?.message || "שגיאה בעצירת ההקלטה"));
+        onFinish(partial, usingWhisper ? "whisper" : "browser");
+      }
+      // Forcibly release the mic if possible
+      try { sttRef.current = null; whisperRef.current = null; } catch {}
     } finally {
       setProcessing(false);
     }
@@ -95,6 +141,19 @@ export default function Mic({ preferWhisper, onFinish, onPartial, disabled }: Pr
           ? `מקליט (${usingWhisper ? "Whisper" : "דפדפן"})... לחצו לסיום`
           : "לחצו על המיקרופון לדבר"}
       </div>
+      {/* Emergency reset if processing hangs */}
+      {processing && (
+        <button
+          onClick={() => {
+            setProcessing(false);
+            const partial = partialBufferRef?.current?.trim() || "";
+            onFinish(partial, usingWhisper ? "whisper" : "browser");
+          }}
+          className="text-xs text-red-600 underline"
+        >
+          ביטול עיבוד ושליחה
+        </button>
+      )}
       {error && <div className="text-xs text-red-600 max-w-xs text-center">{error}</div>}
     </div>
   );

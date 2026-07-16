@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QuizQuestion } from "@/data/questions";
 import { correctEmoji, wrongEmoji } from "@/lib/gamification";
 
@@ -10,14 +10,30 @@ type Props = {
   currentStreak?: number;
   onAnswer: (selectedIndex: number, isCorrect: boolean) => void;
   onNext: () => void;
+  onSkip?: () => void;       // optional: when provided, shows a "skip" button before answering
+  canSkip?: boolean;         // false when no replacement question is available
+  skippedCount?: number;     // number of questions already skipped (for display)
   showRevealButton?: boolean;
 };
 
-export default function QuizCard({ q, index, total, currentStreak = 0, onAnswer, onNext, showRevealButton = true }: Props) {
+export default function QuizCard({
+  q, index, total, currentStreak = 0,
+  onAnswer, onNext, onSkip, canSkip = true, skippedCount = 0,
+  showRevealButton = true
+}: Props) {
   const [selected, setSelected] = useState<number | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [feedbackEmoji, setFeedbackEmoji] = useState<string | null>(null);
   const [flash, setFlash] = useState<"correct" | "wrong" | null>(null);
+
+  // CRITICAL: reset all state when the question changes,
+  // otherwise the previous answer's selection persists into the next question.
+  useEffect(() => {
+    setSelected(null);
+    setRevealed(false);
+    setFeedbackEmoji(null);
+    setFlash(null);
+  }, [q.id]);
 
   const submit = (i: number) => {
     if (selected !== null) return;
@@ -118,15 +134,31 @@ export default function QuizCard({ q, index, total, currentStreak = 0, onAnswer,
         </div>
       )}
 
-      <div className="mt-5 flex items-center justify-between gap-3">
-        {selected === null && !revealed && showRevealButton ? (
-          <button onClick={reveal} className="btn-ghost text-sm flex items-center gap-1.5">
-            <span>👁️</span>
-            <span>הצג תשובה</span>
-          </button>
-        ) : (
-          <div />
-        )}
+      <div className="mt-5 flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {selected === null && !revealed && onSkip && (
+            <button
+              onClick={onSkip}
+              disabled={!canSkip}
+              className="btn-ghost text-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={canSkip ? "החלפה בשאלה אחרת מהמאגר" : "אין עוד שאלות זמינות בנושא הזה"}
+            >
+              <span>⏭️</span>
+              <span>דלג</span>
+              {skippedCount > 0 && (
+                <span className="text-[10px] bg-slate-200 text-slate-600 rounded-full px-1.5 py-0.5 font-bold">
+                  {skippedCount}
+                </span>
+              )}
+            </button>
+          )}
+          {selected === null && !revealed && showRevealButton && (
+            <button onClick={reveal} className="btn-ghost text-sm flex items-center gap-1.5">
+              <span>👁️</span>
+              <span>הצג תשובה</span>
+            </button>
+          )}
+        </div>
         <button
           onClick={onNext}
           className="btn-primary mr-auto"
