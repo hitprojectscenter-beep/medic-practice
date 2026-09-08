@@ -203,9 +203,15 @@ export const computeTrend = (p: UserProfile): TrendInfo => {
  */
 export const buildAdaptiveQuizPool = (
   desiredCount: number,
-  filterTopic?: string
+  filterTopic?: string,
+  filterTopics?: string[]
 ): typeof questions => {
   const p = loadProfile();
+  // Multi-topic filter (union of topics)
+  if (filterTopics && filterTopics.length > 0) {
+    const set = new Set(filterTopics);
+    return rankByNeed(questions.filter(q => set.has(q.topic)), p).slice(0, desiredCount);
+  }
   if (filterTopic && filterTopic !== "all") {
     // Topic-locked - just shuffle topic questions, but deprioritize ones answered correctly recently
     return rankByNeed(questions.filter(q => q.topic === filterTopic), p).slice(0, desiredCount);

@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { questions, shuffle } from "@/data/questions";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { questions, shuffle, topics } from "@/data/questions";
 import { cases } from "@/data/cases";
 import QuizCard from "@/components/QuizCard";
 import AnamnesisCard from "@/components/AnamnesisCard";
@@ -16,11 +17,66 @@ import { track } from "@/lib/track";
 const EXAM_SIZE = 40;
 const ANAMNESIS_PER_EXAM = 4;
 
+const TOPIC_EMOJIS: Record<string, string> = {
+  "תפקיד החובש": "🚑",
+  "טרמינולוגיה רפואית": "📖",
+  "אנטומיה ופיזיולוגיה": "🫀",
+  "הערכת נפגע": "🩺",
+  "החייאה ודפיברילטור": "⚡",
+  "מערכת הנשימה": "🫁",
+  "אסטמה": "💨",
+  "COPD ומחלות נשימה": "🚭",
+  "תסחיף ריאתי": "🩸",
+  "אנפילקסיס": "⚠️",
+  "חנק וחסימת נתיב אוויר": "🫁",
+  "מערכת הלב וכלי הדם": "❤️",
+  "אוטם שריר הלב (ACS)": "💔",
+  "אי ספיקת לב ובצקת ריאות": "🫁",
+  "אירוע מוחי": "🧠",
+  "עילפון ופרכוסים": "😵",
+  "סוכרת": "🍬",
+  "בטן חריפה ומערכת העיכול": "🫃",
+  "כאב בטן": "🤕",
+  "לידה ומיילדות חירום": "👶",
+  "ילדים, יילודים והריון": "🍼",
+  "גריאטריה - קשישים": "👴",
+  "טראומה": "🚨",
+  "טראומה צבאית (MARCH/TCCC)": "🎖️",
+  "חוסם עורקים ודימומים": "🩹",
+  "כוויות": "🔥",
+  "היפותרמיה והיפרתרמיה": "🥶",
+  "טביעה והצלה מימית": "🏊",
+  "הכשות והרעלות": "🐍",
+  "פציעות עיניים, אוזניים": "👁️",
+  "מצבי חירום פסיכיאטריים": "🧠",
+  "סטורציה ומדדים חיוניים": "📊",
+  "מתן תרופות ועירוי": "💉"
+};
+
 type Item =
   | { kind: "quiz"; id: string }
   | { kind: "anamnesis"; id: string };
 
 export default function ExamPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-500">טוען...</div>}>
+      <ExamPageInner />
+    </Suspense>
+  );
+}
+
+function ExamPageInner() {
+  const params = useSearchParams();
+  const initialSelected = (() => {
+    const multi = params?.get("topics");
+    if (multi) {
+      const arr = multi.split(",").map(t => decodeURIComponent(t.trim())).filter(t => topics.includes(t as any));
+      return new Set(arr);
+    }
+    return new Set<string>();
+  })();
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(initialSelected);
+  const [showTopicPicker, setShowTopicPicker] = useState<boolean>(initialSelected.size > 0);
   const [started, setStarted] = useState(false);
   const [index, setIndex] = useState(0);
   const [feedbackEmoji, setFeedbackEmoji] = useState<{ emoji: string; correct?: boolean } | null>(null);
@@ -52,7 +108,12 @@ export default function ExamPage() {
       setSkippedCount(0);
       return;
     }
-    const quizPool = shuffle(questions).slice(0, EXAM_SIZE - ANAMNESIS_PER_EXAM);
+    const filtered = selectedTopics.size === 0
+      ? questions
+      : questions.filter(q => selectedTopics.has(q.topic));
+    // If user picked too-narrow set with fewer than needed questions, fall back to what's available
+    const desiredQuiz = EXAM_SIZE - ANAMNESIS_PER_EXAM;
+    const quizPool = shuffle(filtered).slice(0, Math.min(desiredQuiz, filtered.length));
     const casePool = shuffle([...cases]).slice(0, ANAMNESIS_PER_EXAM);
     const mixed: Item[] = [
       ...quizPool.map(q => ({ kind: "quiz" as const, id: q.id })),
@@ -155,6 +216,81 @@ export default function ExamPage() {
                 <div className="text-xs text-slate-600 font-medium">דקות</div>
               </div>
             </div>
+
+            {/* Custom exam by topic */}
+            <div className="rounded-2xl border-2 border-slate-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowTopicPicker(v => !v)}
+                className="w-full px-4 py-3 flex items-center justify-between bg-slate-50 hover:bg-slate-100 transition"
+              >
+                <div className="text-right">
+                  <div className="font-extrabold text-sm">🎨 מבחן מותאם לנושאים</div>
+                  <div className="text-xs text-slate-500">
+                    {selectedTopics.size === 0
+                      ? "כל הנושאים · לחצו לבחירה"
+                      : `${selectedTopics.size} נושאים נבחרו · ${questions.filter(q => selectedTopics.has(q.topic)).length} שאלות זמינות`}
+                  </div>
+                </div>
+                <span className="text-slate-500 text-lg">{showTopicPicker ? "▲" : "▼"}</span>
+              </button>
+              {showTopicPicker && (
+                <div className="p-4 bg-white border-t border-slate-200 space-y-3">
+                  <div className="flex gap-2 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTopics(new Set(topics))}
+                      className="font-bold text-teal-700 underline decoration-dotted"
+                    >
+                      בחר הכל
+                    </button>
+                    <span className="text-slate-300">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTopics(new Set())}
+                      className="font-bold text-slate-500 underline decoration-dotted"
+                    >
+                      נקה
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                    {topics.map(t => {
+                      const n = questions.filter(q => q.topic === t).length;
+                      const disabled = n === 0;
+                      const selected = selectedTopics.has(t);
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => {
+                            setSelectedTopics(prev => {
+                              const next = new Set(prev);
+                              if (next.has(t)) next.delete(t);
+                              else next.add(t);
+                              return next;
+                            });
+                          }}
+                          className={`min-h-[52px] px-3 py-2 rounded-xl border-2 text-right text-xs font-bold transition flex items-center gap-2 ${
+                            disabled
+                              ? "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
+                              : selected
+                              ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent"
+                              : "bg-white border-slate-200 active:bg-teal-50"
+                          }`}
+                        >
+                          <span className="text-lg shrink-0">{TOPIC_EMOJIS[t] || "📌"}</span>
+                          <span className="flex-1 text-right leading-tight">{t}</span>
+                          {selected && <span className="text-white">✓</span>}
+                          <span className={`text-[10px] shrink-0 ${selected ? "text-white/90" : "text-slate-400"}`}>{n}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="text-xs text-slate-500 text-center">
               💡 סדר השאלות אקראי. תקבלו XP על כל תשובה + 50 XP בונוס בהשלמת המבחן.
             </div>

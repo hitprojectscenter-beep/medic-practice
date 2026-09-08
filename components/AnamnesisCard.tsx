@@ -224,7 +224,10 @@ export default function AnamnesisCard({ c, index, total, onComplete, onNext }: P
 
     // Generate unique turn ID so we can later update by id (race-safe vs index)
     const turnId = generateTurnId();
-    const wantsAnswer = ANSWER_TRIGGER.test(trimmed);
+    // Auto-trigger AI response for every user question. The "תענה לי" trigger
+    // was too easy to miss on mobile (STT often drops it) and confused new users.
+    // The MAX_QUESTIONS cap provides sufficient rate limiting.
+    const wantsAnswer = true;
 
     if (typeof console !== "undefined") {
       console.log("[anamnesis] turn", turnId, "user said:", trimmed.slice(0, 80));
@@ -529,7 +532,7 @@ export default function AnamnesisCard({ c, index, total, onComplete, onNext }: P
             </div>
           </div>
           <p className="text-xs text-slate-600 mb-3 leading-relaxed">
-            💡 רוצים תשובה מהמטופל? סיימו את השאלה במילה <strong>"תענה לי"</strong>. למשל: <em>"מה כואב לך? תענה לי"</em>
+            💡 לחצו על המיקרופון, שאלו את שאלתכם בקול, והמטופל יענה מיד. סופרים לכם {MAX_QUESTIONS} שאלות סך הכל.
           </p>
 
           {reachedLimit ? (
@@ -567,11 +570,6 @@ export default function AnamnesisCard({ c, index, total, onComplete, onNext }: P
                 <div key={t.id} className="space-y-1">
                   <div className="p-2 rounded-xl bg-teal-50 border border-teal-200 text-sm">
                     <strong className="text-teal-700 text-xs">חובש:</strong> {t.userQuestion}
-                    {!t.triggered && (
-                      <span className="text-[10px] text-slate-400 mr-2">
-                        💡 הוסף "תענה לי" בסוף כדי לקבל תשובה
-                      </span>
-                    )}
                   </div>
                   {t.loadingAnswer && (
                     <div className="p-2 rounded-xl bg-amber-50 border border-amber-200 text-sm mr-6 inline-flex items-center gap-2">

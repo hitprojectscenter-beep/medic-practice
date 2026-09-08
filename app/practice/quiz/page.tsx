@@ -45,8 +45,20 @@ export default function QuizPracticePage() {
 
 function QuizPracticeInner() {
   const params = useSearchParams();
-  const initialTopic = params?.get("topic") || "all";
-  const [topic, setTopic] = useState<string>(initialTopic);
+  // Initial selection: support ?topics=a,b,c (multi) OR ?topic=x (single, legacy)
+  const initialSelected = (() => {
+    const multi = params?.get("topics");
+    if (multi) {
+      const arr = multi.split(",").map(t => decodeURIComponent(t.trim())).filter(t => topics.includes(t as any));
+      return new Set(arr);
+    }
+    const single = params?.get("topic");
+    if (single && single !== "all" && topics.includes(single as any)) {
+      return new Set([single]);
+    }
+    return new Set<string>(); // empty = "all"
+  })();
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(initialSelected);
   const [count, setCount] = useState<number>(10);
   const [adaptive, setAdaptive] = useState<boolean>(true);
   const [started, setStarted] = useState(false);
@@ -73,11 +85,23 @@ function QuizPracticeInner() {
   const [skippedCount, setSkippedCount] = useState(0);
   const { stats, lastChange, onAnswer, clearChange } = useGameStats();
 
-  // Sync topic if URL changes (e.g., user clicks a different chip)
+  // Sync topics if URL changes
   useEffect(() => {
-    const t = params?.get("topic");
-    if (t && topics.includes(t as any)) setTopic(t);
+    const multi = params?.get("topics");
+    if (multi) {
+      const arr = multi.split(",").map(t => decodeURIComponent(t.trim())).filter(t => topics.includes(t as any));
+      if (arr.length > 0) setSelectedTopics(new Set(arr));
+    } else {
+      const t = params?.get("topic");
+      if (t && topics.includes(t as any)) setSelectedTopics(new Set([t]));
+    }
   }, [params]);
+
+  // Filtered question pool based on selectedTopics (empty = all)
+  const activePool = useMemo(() => {
+    if (selectedTopics.size === 0) return questions;
+    return questions.filter(q => selectedTopics.has(q.topic));
+  }, [selectedTopics]);
 
   // Build the initial session whenever a new run starts.
   // Final safety: de-duplicate by id (Map keeps last value).
@@ -88,21 +112,21 @@ function QuizPracticeInner() {
       setSkippedCount(0);
       return;
     }
+    const topicsArr = selectedTopics.size > 0 ? [...selectedTopics] : undefined;
     const built = adaptive
-      ? buildAdaptiveQuizPool(count, topic === "all" ? undefined : topic)
-      : shuffle(topic === "all" ? questions : questions.filter(q => q.topic === topic)).slice(0, count);
+      ? buildAdaptiveQuizPool(count, undefined, topicsArr)
+      : shuffle(activePool).slice(0, count);
     const unique = Array.from(new Map(built.map(q => [q.id, q])).values());
     setSession(unique);
     setSeenIds(new Set(unique.map(q => q.id)));
     setSkippedCount(0);
-  }, [started, topic, count, adaptive]);
+  }, [started, selectedTopics, count, adaptive, activePool]);
 
-  // Pool of candidate questions for skips: everything in current topic NOT yet seen.
+  // Pool of candidate questions for skips: everything in current pool NOT yet seen.
   const candidateReplacements = useMemo(() => {
     if (!started) return [];
-    const pool = topic === "all" ? questions : questions.filter(q => q.topic === topic);
-    return pool.filter(q => !seenIds.has(q.id));
-  }, [started, topic, seenIds]);
+    return activePool.filter(q => !seenIds.has(q.id));
+  }, [started, activePool, seenIds]);
 
   const hasReplacementAvailable = candidateReplacements.length > 0;
 
@@ -130,9 +154,15 @@ function QuizPracticeInner() {
   // Record exam result when finished
   useEffect(() => {
     if (started && index === session.length && session.length > 0) {
+      const topicLabel =
+        selectedTopics.size === 0
+          ? undefined
+          : selectedTopics.size === 1
+          ? [...selectedTopics][0]
+          : `${selectedTopics.size} נושאים`;
       recordExam({
         type: "quiz",
-        topic: topic === "all" ? undefined : topic,
+        topic: topicLabel,
         scorePercent: Math.round((localStats.correct / localStats.total) * 100),
         questionsTotal: localStats.total,
         questionsCorrect: localStats.correct,
@@ -141,6 +171,18 @@ function QuizPracticeInner() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [started, index, session.length]);
+
+  // Multi-select helpers
+  const toggleTopic = (t: string) => {
+    setSelectedTopics(prev => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t);
+      else next.add(t);
+      return next;
+    });
+  };
+  const clearTopics = () => setSelectedTopics(new Set());
+  const selectAllTopics = () => setSelectedTopics(new Set(topics));
 
   if (!started) {
     return (
@@ -163,43 +205,62 @@ function QuizPracticeInner() {
           </div>
 
           <div className="card space-y-6">
-            {/* Topic — tap-friendly grid replaces the native <select> which was unreliable on mobile */}
+            {/* Multi-topic selection - tap to toggle each */}
             <div>
-              <div className="text-sm font-extrabold mb-3 flex items-center gap-2">
+              <div className="text-sm font-extrabold mb-1 flex items-center gap-2">
                 <span>🎯</span>
-                <span>נושא</span>
-                <span className="text-xs text-slate-500 font-medium mr-auto">
-                  {topic === "all"
-                    ? `${questions.length} שאלות זמינות`
-                    : `${questions.filter(q => q.topic === topic).length} שאלות`}
-                </span>
+                <span>נושאים (לחצו כדי לבחור מספר נושאים)</span>
               </div>
+              <div className="text-xs text-slate-500 mb-3 flex items-center justify-between gap-2">
+                <span>
+                  {selectedTopics.size === 0
+                    ? `כל הנושאים (${questions.length} שאלות)`
+                    : `${selectedTopics.size} נושאים נבחרו · ${activePool.length} שאלות`}
+                </span>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={selectAllTopics}
+                    className="text-[11px] font-bold text-teal-700 underline decoration-dotted"
+                  >
+                    בחר הכל
+                  </button>
+                  <span className="text-slate-300">·</span>
+                  <button
+                    type="button"
+                    onClick={clearTopics}
+                    className="text-[11px] font-bold text-slate-500 underline decoration-dotted"
+                  >
+                    נקה
+                  </button>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={clearTopics}
+                className={`w-full min-h-[52px] mb-2 px-3 py-3 rounded-2xl border-2 text-right font-bold text-sm transition flex items-center gap-2 ${
+                  selectedTopics.size === 0
+                    ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent shadow-lg shadow-teal-200"
+                    : "bg-white border-slate-200 active:scale-95 active:bg-teal-50"
+                }`}
+              >
+                <span className="text-2xl">🌟</span>
+                <span className="flex-1 text-right">כל הנושאים</span>
+                <span className={`text-xs ${selectedTopics.size === 0 ? "text-white/90" : "text-slate-500"}`}>
+                  {questions.length}
+                </span>
+              </button>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setTopic("all")}
-                  className={`col-span-2 min-h-[52px] px-3 py-3 rounded-2xl border-2 text-right font-bold text-sm transition flex items-center gap-2 ${
-                    topic === "all"
-                      ? "bg-gradient-to-l from-teal-500 to-cyan-500 text-white border-transparent shadow-lg shadow-teal-200 scale-[1.01]"
-                      : "bg-white border-slate-200 active:scale-95 active:bg-teal-50"
-                  }`}
-                >
-                  <span className="text-2xl">🌟</span>
-                  <span className="flex-1 text-right">כל הנושאים</span>
-                  <span className={`text-xs ${topic === "all" ? "text-white/90" : "text-slate-500"}`}>
-                    {questions.length}
-                  </span>
-                </button>
                 {topics.map(t => {
                   const n = questions.filter(q => q.topic === t).length;
                   const disabled = n === 0;
-                  const selected = topic === t;
+                  const selected = selectedTopics.has(t);
                   return (
                     <button
                       key={t}
                       type="button"
                       disabled={disabled}
-                      onClick={() => setTopic(t)}
+                      onClick={() => toggleTopic(t)}
                       className={`min-h-[58px] px-3 py-2.5 rounded-2xl border-2 text-right text-xs md:text-sm font-bold transition flex items-center gap-2 ${
                         disabled
                           ? "bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed"
@@ -210,6 +271,7 @@ function QuizPracticeInner() {
                     >
                       <span className="text-xl shrink-0">{TOPIC_EMOJIS[t] || "📌"}</span>
                       <span className="flex-1 text-right leading-tight">{t}</span>
+                      {selected && <span className="text-white text-lg">✓</span>}
                       <span className={`text-[10px] shrink-0 ${selected ? "text-white/90" : "text-slate-400"}`}>
                         {n}
                       </span>
